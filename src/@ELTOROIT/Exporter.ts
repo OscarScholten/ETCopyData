@@ -1,6 +1,7 @@
 import { IExportData } from "./Interfaces";
 import { OrgManager } from "./OrgManager";
 import { LogLevel, ResultOperation, Util } from "./Util";
+import Bottleneck from "bottleneck";
 
 export class Exporter {
 
@@ -20,47 +21,54 @@ export class Exporter {
 	}
 
 	public static exportData(org: OrgManager, folderCode: string): Promise<void> {
-		const exporter: Exporter = new Exporter();
-		return exporter.privExportData(org, folderCode);
+		const exporter: Exporter = new Exporter(true);
+		return exporter.export(org, folderCode, org.order.findImportOrder(), 'Data');
 	}
 
 	public static exportMetadata(org: OrgManager, folderCode: string): Promise<void> {
-		const exporter: Exporter = new Exporter();
-		return exporter.privExportMetadata(org, folderCode);
+		const exporter: Exporter = new Exporter(false);
+		return exporter.export(org, folderCode, org.coreMD.sObjects, 'Metadata');
 	}
 
 	private mapRecordsFetched: Map<string, IExportData> = new Map<string, IExportData>();
+	private metadataReferences: Map<string, Set<string>> = null;
+	private limiter = new Bottleneck({maxConcurrent: 5});
 
-	private privExportData(org: OrgManager, folderCode: string): Promise<void> {
-		return new Promise((resolve, reject) => {
-			const promises = [];
-
-			org.order.findImportOrder().forEach((sObjName) => {
-				Util.writeLog(`[${org.alias}] Querying Data sObject [${sObjName}]`, LogLevel.TRACE);
-				promises.push(
-					this.queryData(org, sObjName, folderCode),
-				);
-			});
-
-			Promise.all(promises)
-				.then(() => { resolve(); })
-				.catch((err) => { Util.throwError(err); });
-		});
+	constructor(reportMetadataReferences: boolean) {
+		if (reportMetadataReferences) {
+			this.metadataReferences = new Map<string, Set<string>>();
+		}
 	}
-	private privExportMetadata(org: OrgManager, folderCode: string): Promise<void> {
+
+	private export(org: OrgManager, folderCode: string, sObjects: string[], type: string): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const promises = [];
 
-			// Metadata
-			org.coreMD.sObjects.forEach((sObjName) => {
-				Util.writeLog(`[${org.alias}] Querying Metadata sObject [${sObjName}]`, LogLevel.TRACE);
+			sObjects.forEach((sObjName) => {
+				Util.writeLog(`[${org.alias}] Querying ${type} sObject [${sObjName}]`, LogLevel.TRACE);
 				promises.push(
-					this.queryData(org, sObjName, folderCode),
+					this.limiter.schedule(() => this.queryData(org, sObjName, folderCode))
+					// this.queryData(org, sObjName, folderCode)
 				);
+				if (false) {
+					this.limiter.schedule(() => this.queryData(org, sObjName, folderCode));
+				}
 			});
 
 			Promise.all(promises)
-				.then(() => { resolve(); })
+				.then(() => {
+					if (this.metadataReferences !== null) {
+						this.metadataReferences.forEach((value, key) => {
+							let references = Array.from(value.values());
+							const nullIndex = references.indexOf(null);
+							if (nullIndex !== -1) {
+								references[nullIndex] = '<null>';
+							}
+							Util.writeLog(`[${org.alias}] data contains the following references for sObject [${key}]: ${references}`, LogLevel.INFO);
+						});
+					}
+					resolve();
+				})
 				.catch((err) => { Util.throwError(err); });
 		});
 	}
@@ -93,6 +101,26 @@ export class Exporter {
 								Util.assertEquals(data.total, data.records.length, "Not all the records were fetched [2].");
 
 								if (data.total >= 0) {
+									if (this.metadataReferences != null) {
+										var fields = new Map<string, Set<string>>();
+										org.discovery.getSObjects().get(sObjName).parents.forEach((parent) => {
+											if (org.coreMD.isMD(parent.sObj)) {
+												var referenceSet = this.metadataReferences.get(parent.sObj);
+												if (referenceSet === undefined) {
+													referenceSet = new Set<string>();
+													this.metadataReferences.set(parent.sObj, referenceSet);
+												}
+												fields.set(parent.parentId, referenceSet);
+											}
+										});
+										data.records.forEach((record) => {
+											Object.entries(record).forEach(([key, value]) => {
+												if (fields.has(key)) {
+													fields.get(key).add(<string>value);
+												}
+											});
+										});
+									}
 									org.settings.writeToFile(org.alias + folderCode, sObjName + ".json", data)
 										.then(() => {
 											// NOTE: Clean memory, and avoid hep dumps.

@@ -154,10 +154,23 @@ export class SchemaDiscovery {
 		});
 
 		// VERBOSE: Output rejected reasons
+		this.allRejects[RejectType[RejectType.ADD_FIELD]] = this.sortRejects(this.allRejects[RejectType[RejectType.ADD_FIELD]]);
+		this.allRejects[RejectType[RejectType.ADD_CHILD]] = this.sortRejects(this.allRejects[RejectType[RejectType.ADD_CHILD]]);
+		this.allRejects[RejectType[RejectType.ADD_SOBJECT]] = this.sortRejects(this.allRejects[RejectType[RejectType.ADD_SOBJECT]]);
+		this.allRejects[RejectType[RejectType.SOBJ_MISMATCH]] = this.sortRejects(this.allRejects[RejectType[RejectType.SOBJ_MISMATCH]]);
+		this.allRejects[RejectType[RejectType.FIELD_MISMATCH]] = this.sortRejects(this.allRejects[RejectType[RejectType.FIELD_MISMATCH]]);
 		output.rejected = this.allRejects;
 
 		// Write the output
 		return this.orgManager.settings.writeToFile(this.orgManager.alias, "org.json", output);
+	}
+
+	private sortRejects(rejects: any): any {
+		const ordered = {};
+		Object.keys(rejects).sort().forEach(function(key) {
+		    ordered[key] = rejects[key];
+		});
+		return ordered;
 	}
 
 	private resetData(): void {
