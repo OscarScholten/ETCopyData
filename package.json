@@ -24,7 +24,6 @@
 		"chai": "4.2.0",
 		"globby": "8.0.1",
 		"mocha": "5.2.0",
-		"nyc": "^13.3.0",
 		"rimraf": "^2.6.3",
 		"sinon": "7.2.2",
 		"ts-node": "7.0.1",
@@ -62,7 +61,6 @@
 		"posttest": "tsc -p test --noEmit && tslint -p test -t stylish",
 		"prepack": "rimraf lib && tsc && oclif-dev manifest && oclif-dev readme && npm shrinkwrap",
 		"prepare": "rimraf lib && tsc && oclif-dev manifest && oclif-dev readme && npm shrinkwrap",
-		"test": "nyc mocha --forbid-only \"test/**/*.test.ts\"",
 		"version": "oclif-dev readme && git add README.md"
 	}
 }
