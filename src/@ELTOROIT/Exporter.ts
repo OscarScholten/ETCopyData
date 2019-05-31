@@ -16,7 +16,7 @@ export class Exporter {
 			// LEARNING: [PROMISES]: Wait for all promises which are running in parallel
 			Promise.all(promises)
 				.then(() => { resolve(); })
-				.catch((err) => { Util.throwError(err); });
+				.catch((err) => { reject(err); });
 		});
 	}
 
@@ -69,7 +69,7 @@ export class Exporter {
 					}
 					resolve();
 				})
-				.catch((err) => { Util.throwError(err); });
+				.catch((err) => { reject(err); });
 		});
 	}
 
@@ -128,12 +128,12 @@ export class Exporter {
 											// Now, resolve it.
 											resolve();
 										})
-										.catch((err) => { Util.throwError(err); });
+										.catch((err) => { reject(err); });
 								} else {
 									resolve();
 								}
 							})
-							.catch((err) => { Util.throwError(err); });
+							.catch((err) => { reject(err); });
 					});
 			},
 		);
@@ -180,9 +180,9 @@ export class Exporter {
 						.then((qRes) => {
 							this.getRecords(org, sObjName, qRes)
 								.then(() => { resolve(); })
-								.catch((err) => { Util.throwError(err); });
+								.catch((err) => { reject(err); });
 						})
-						.catch((err) => { Util.throwError(err); });
+						.catch((err) => { reject(err); });
 				}
 			});
 	}

@@ -38,7 +38,7 @@ export class Importer {
 									}
 									resolveEach();
 								})
-								.catch((err) => { Util.throwError(err); });
+								.catch((err) => { rejectEach(err); });
 						});
 					})
 					.then(() => {
@@ -55,7 +55,7 @@ export class Importer {
 							reject(msg);
 						}
 					})
-					.catch((err) => { Util.throwError(err); });
+					.catch((err) => { reject(err); });
 			} else {
 				resolve(0);
 			}
@@ -103,7 +103,7 @@ export class Importer {
 						reject(msg);
 					}
 				})
-				.catch((err) => { Util.throwError(err); });
+				.catch((err) => { reject(err); });
 		});
 	}
 
@@ -145,7 +145,7 @@ export class Importer {
 					});
 					resolve();
 				})
-				.catch((err) => { Util.throwError(err); });
+				.catch((err) => { reject(err); });
 		});
 	}
 
@@ -165,7 +165,7 @@ export class Importer {
 					});
 					resolve();
 				})
-				.catch((err) => { Util.throwError(err); });
+				.catch((err) => { reject(err); });
 		});
 	}
 
@@ -190,9 +190,9 @@ export class Importer {
 						}
 						this.loadAllSObjectData(orgSource, orgDestination, sObjectsToLoad, ++index)
 							.then(() => { resolve(); })
-							.catch((err) => { Util.throwError(err); });
+							.catch((err) => { reject(err); });
 					})
-					.catch((err) => { Util.throwError(err); });
+					.catch((err) => { reject(err); });
 			}
 		});
 
@@ -269,7 +269,7 @@ export class Importer {
 							let goodCount: number = 0;
 
 							if (error) {
-								Util.throwError(error);
+								reject(error);
 							}
 
 							// NOTE: I need a traditional loop because the index (i) will be used in two lists of same size and same order.
@@ -303,7 +303,7 @@ export class Importer {
 						resolve(0);
 					}
 				})
-				.catch((err) => { Util.throwError(err); });
+				.catch((err) => { reject(err); });
 		});
 	}
 
@@ -357,7 +357,7 @@ export class Importer {
 							let goodCount: number = 0;
 
 							if (error) {
-								Util.throwError(error);
+								rejectEach(error);
 							}
 
 							for (let i = 0; i < results.length; i++) {

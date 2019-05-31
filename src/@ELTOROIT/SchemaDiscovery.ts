@@ -77,9 +77,9 @@ export class SchemaDiscovery {
 
 					Promise.all(promises)
 						.then(() => { resolve(this.privSObjects); })
-						.catch((err) => { Util.throwError(err); });
+						.catch((err) => { reject(err); });
 				})
-				.catch((err) => { Util.throwError(err); });
+				.catch((err) => { reject(err); });
 		});
 	}
 
@@ -194,7 +194,7 @@ export class SchemaDiscovery {
 					this.processChildren(res, sObjName);
 					resolve(res);
 				})
-				.catch((err) => { Util.throwError(err); });
+				.catch((err) => { reject(err); });
 		});
 	}
 
