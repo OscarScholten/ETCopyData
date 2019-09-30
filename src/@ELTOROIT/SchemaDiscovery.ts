@@ -232,30 +232,30 @@ export class SchemaDiscovery {
 			}
 
 			// Must be
-			if (!sObj.createable) {
-				localRejects.push("Must be createable");
-			}
-			if (!sObj.deletable) {
-				localRejects.push("Must be deletable");
-			}
-			if (!sObj.queryable) {
-				localRejects.push("Must be queryable");
-			}
-			if (!sObj.replicateable) {
-				localRejects.push("Must be replicateable");
-			}
-			if (!sObj.retrieveable) {
-				localRejects.push("Must be retrieveable");
-			}
-			if (!sObj.searchable) {
-				localRejects.push("Must be searchable");
-			}
-			if (!sObj.undeletable) {
-				localRejects.push("Must be undeletable");
-			}
-			if (!sObj.updateable) {
-				localRejects.push("Must be updateable");
-			}
+			// if (!sObj.createable) {
+			// 	localRejects.push("Must be createable");
+			// }
+			// if (!sObj.deletable) {
+			// 	localRejects.push("Must be deletable");
+			// }
+			// if (!sObj.queryable) {
+			// 	localRejects.push("Must be queryable");
+			// }
+			// if (!sObj.replicateable) {
+			// 	localRejects.push("Must be replicateable");
+			// }
+			// if (!sObj.retrieveable) {
+			// 	localRejects.push("Must be retrieveable");
+			// }
+			// if (!sObj.searchable) {
+			// 	localRejects.push("Must be searchable");
+			// }
+			// if (!sObj.undeletable) {
+			// 	localRejects.push("Must be undeletable");
+			// }
+			// if (!sObj.updateable) {
+			// 	localRejects.push("Must be updateable");
+			// }
 			if (!this.orgManager.settings.getRequestedSObjectNames(false).includes(sObj.name)) {
 				localRejects.push("Was Not requested");
 			}
