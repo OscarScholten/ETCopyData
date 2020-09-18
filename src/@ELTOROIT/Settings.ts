@@ -600,7 +600,7 @@ export class Settings implements ISettingsValues {
 		this.twoPassReferenceFieldsRaw = null;
 		this.maxRecordsEachRaw = -1;
 		this.deleteDestination = false;
-		this.pollingTimeout = 100000;
+		this.pollingTimeout = 300000;
 	}
 
 	private getBlankSObjectData(sObjName: string): ISettingsSObjectData {
