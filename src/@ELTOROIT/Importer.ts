@@ -199,19 +199,31 @@ export class Importer {
 					.catch((err) => {							
 						Util.writeLog(`Error during import: ${err.message}`, LogLevel.ERROR);
 						Util.writeLog(`Retry attempt #1 of: ${sObjName}`, LogLevel.INFO);
-						
-						this.loadOneSObjectData(orgSource, orgDestination, sObjName)
-							.then(importSuccesFn)
-							.catch((err) => {
-								Util.writeLog(`Error during import: ${err.message}`, LogLevel.ERROR);
-								Util.writeLog(`Retry attempt #2 of: ${sObjName}`, LogLevel.INFO);
 
+						this.deleteOneBeforeLoading(orgSource, sObjName)
+							.then((value) => {
 								this.loadOneSObjectData(orgSource, orgDestination, sObjName)
 									.then(importSuccesFn)
 									.catch((err) => {
-										reject(err); 
+										Util.writeLog(`Error during import: ${err.message}`, LogLevel.ERROR);
+										Util.writeLog(`Retry attempt #2 of: ${sObjName}`, LogLevel.INFO);
+		
+										this.deleteOneBeforeLoading(orgSource, sObjName)
+											.then((value) => {
+												this.loadOneSObjectData(orgSource, orgDestination, sObjName)
+													.then(importSuccesFn)
+													.catch((err) => {
+														reject(err); 
+												});
+											})
+											.catch((err)=> {
+												reject(err);
+											});										
 								});
-						});
+							})
+							.catch((err) => {
+								reject(err);
+							});						
 				});				
 			}
 		});
