@@ -173,7 +173,7 @@ export class Importer {
 	// WARNING: Serializing an asynchronous operation. Recursion is going to help here...
 	// WARNING: This can't be done in parallel mode, since the IDs from the previous load are needed for the next loads
 	// tslint:disable-next-line:max-line-length
-	private loadAllSObjectData(orgSource: OrgManager, orgDestination: OrgManager, sObjectsToLoad: string[], index: number): Promise<void> {
+	private loadAllSObjectData(orgSource: OrgManager, orgDestination: OrgManager, sObjectsToLoad: string[], index: number): Promise<void> {		
 		return new Promise((resolve, reject) => {
 			if (index >= sObjectsToLoad.length) {
 				resolve();
@@ -182,20 +182,51 @@ export class Importer {
 				let msg = "";
 				msg += `[${orgDestination.alias}] Importing Sobject: [${sObjName}] (${index + 1} of ${sObjectsToLoad.length})`;
 				Util.writeLog(msg, LogLevel.TRACE);
+
+				var importSuccesFn = (value: number) => {
+					this.countImportErrorsRecords += value;
+					if (value > 0) {
+						this.countImportErrorsSObjects++;
+					}
+					this.loadAllSObjectData(orgSource, orgDestination, sObjectsToLoad, ++index)
+						.then(() => { resolve(); })
+						.catch((err) => { reject(err); });
+				};
+				
+				// retry mechanism for import below, try 2 times max, maybe network or timeout issue occured with scratch org
 				this.loadOneSObjectData(orgSource, orgDestination, sObjName)
-					.then((value: number) => {
-						this.countImportErrorsRecords += value;
-						if (value > 0) {
-							this.countImportErrorsSObjects++;
-						}
-						this.loadAllSObjectData(orgSource, orgDestination, sObjectsToLoad, ++index)
-							.then(() => { resolve(); })
-							.catch((err) => { reject(err); });
-					})
-					.catch((err) => { reject(err); });
+					.then(importSuccesFn)
+					.catch((err) => {							
+						Util.writeLog(`Error during import: ${err.message}`, LogLevel.ERROR);
+						Util.writeLog(`Retry attempt #1 of: ${sObjName}`, LogLevel.INFO);
+
+						this.deleteOneBeforeLoading(orgSource, sObjName)
+							.then((value) => {
+								this.loadOneSObjectData(orgSource, orgDestination, sObjName)
+									.then(importSuccesFn)
+									.catch((err) => {
+										Util.writeLog(`Error during import: ${err.message}`, LogLevel.ERROR);
+										Util.writeLog(`Retry attempt #2 of: ${sObjName}`, LogLevel.INFO);
+		
+										this.deleteOneBeforeLoading(orgSource, sObjName)
+											.then((value) => {
+												this.loadOneSObjectData(orgSource, orgDestination, sObjName)
+													.then(importSuccesFn)
+													.catch((err) => {
+														reject(err); 
+												});
+											})
+											.catch((err)=> {
+												reject(err);
+											});										
+								});
+							})
+							.catch((err) => {
+								reject(err);
+							});						
+				});				
 			}
 		});
-
 	}
 
 	private loadOneSObjectData(orgSource: OrgManager, orgDestination: OrgManager, sObjName: string): Promise<number> {
@@ -266,7 +297,7 @@ export class Importer {
 						// LEARNING: Inserting sObject records in bulk
 						orgDestination.conn.bulk.load(sObjName, "insert", bulkOptions, records, (error, results: any[]) => {
 							let badCount: number = 0;
-							let goodCount: number = 0;
+							let goodCount: number = 0;							
 
 							if (error) {
 								reject(error);
