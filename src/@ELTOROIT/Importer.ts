@@ -1,3 +1,4 @@
+import { SSL_OP_MICROSOFT_SESS_ID_BUG } from "constants";
 import { BulkOptions, Date, RecordResult } from "jsforce";
 import { ISchemaDataParent } from "./Interfaces";
 import { OrgManager } from "./OrgManager";
@@ -294,42 +295,59 @@ export class Importer {
 						// WARNING: Salesforce Bulk has a weird behavior that if the options are not given,
 						// WARNING: then the rest of the parameters are shifted to the left rather than taking null as a placeholder.
 						const bulkOptions: BulkOptions = { concurrencyMode: "Parallel", extIdField: null };
+
+						let badCount: number = 0;
+						let goodCount: number = 0;							
+
 						// LEARNING: Inserting sObject records in bulk
-						orgDestination.conn.bulk.load(sObjName, "insert", bulkOptions, records, (error, results: any[]) => {
-							let badCount: number = 0;
-							let goodCount: number = 0;							
+						let sliceSize = 1000;
+						let sliceCount = Math.floor(records.length / sliceSize) + 1;
+						let currentSlice = 0;
+						let self = this;
 
-							if (error) {
-								reject(error);
-							}
-
-							// NOTE: I need a traditional loop because the index (i) will be used in two lists of same size and same order.
-							for (let i = 0; i < results.length; i++) {
-								msg = "";
-								if (results[i].success) {
-									goodCount++;
-									this.matchingIds.get(sObjName).set(records[i].Id, results[i].id);
-
-									// VERBOSE: Show record was added succesfully
-									msg += `[${orgDestination.alias}] Successfully imported [${sObjName}] record #${i + 1}. `;
-									msg += `Ids mapped: [${records[i].Id}] => [${results[i].id}]`;
-									Util.writeLog(msg, LogLevel.TRACE);
-								} else {
-									badCount++;
-									msg += `*** [${orgDestination.alias}] Error importing [${sObjName}] record #${i + 1}. `;
-									msg += results[i].errors.join(", ");
-									Util.writeLog(msg, LogLevel.ERROR);
+						let loadSlice = function() {
+							Util.writeLog(`Slice ${currentSlice+1} of ${sliceCount}`, LogLevel.INFO);
+							let recordSlice = records.slice(currentSlice * sliceSize, (currentSlice+1) * sliceSize);
+							orgDestination.conn.bulk.load(sObjName, "insert", bulkOptions, recordSlice, (error, results: any[]) => {
+								if (error) {
+									reject(error);
 								}
-							}
 
-							msg = "";
-							msg += `[${orgDestination.alias}] Imported [${sObjName}]. `;
-							msg += `Record count: [Good = ${goodCount}, Bad = ${badCount}]`;
-							Util.writeLog(msg, LogLevel.INFO);
-							Util.logResultsAdd(orgDestination, ResultOperation.IMPORT, sObjName, goodCount, badCount);
+								// NOTE: I need a traditional loop because the index (i) will be used in two lists of same size and same order.
+								for (let i = 0; i < results.length; i++) {
+									msg = "";
+									if (results[i].success) {
+										goodCount++;
+										self.matchingIds.get(sObjName).set(recordSlice[i].Id, results[i].id);
 
-							resolve(badCount);
-						});
+										// VERBOSE: Show record was added succesfully
+										msg += `[${orgDestination.alias}] Successfully imported [${sObjName}] record #${currentSlice * sliceSize + i + 1}. `;
+										msg += `Ids mapped: [${recordSlice[i].Id}] => [${results[i].id}]`;
+										Util.writeLog(msg, LogLevel.TRACE);
+									} else {
+										badCount++;
+										msg += `*** [${orgDestination.alias}] Error importing [${sObjName}] record #${currentSlice * sliceSize + i + 1}. `;
+										msg += results[i].errors.join(", ");
+										Util.writeLog(msg, LogLevel.ERROR);
+									}
+								}
+
+								currentSlice++;
+								if (currentSlice >= sliceCount) {
+									msg = "";
+									msg += `[${orgDestination.alias}] Imported [${sObjName}]. `;
+									msg += `Record count: [Good = ${goodCount}, Bad = ${badCount}]`;
+									Util.writeLog(msg, LogLevel.INFO);
+									Util.logResultsAdd(orgDestination, ResultOperation.IMPORT, sObjName, goodCount, badCount);
+
+									resolve(badCount);
+								} else {
+									loadSlice();
+								}
+							});
+						}
+
+						loadSlice();
 					} else {
 						resolve(0);
 					}
