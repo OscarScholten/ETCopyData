@@ -193,8 +193,9 @@ export class Importer {
 						.catch((err) => { reject(err); });
 				};
 				
-				// retry mechanism for import below, try 2 times max, maybe network or timeout issue occured with scratch org
-				this.loadOneSObjectData(orgSource, orgDestination, sObjName)
+        // retry mechanism for import below, try 2 times max, maybe network or timeout issue occured with scratch org
+        this.deleteOneBeforeLoading(orgSource, sObjName).then((value)=>{
+          this.loadOneSObjectData(orgSource, orgDestination, sObjName)
 					.then(importSuccesFn)
 					.catch((err) => {							
 						Util.writeLog(`Error during import: ${err.message}`, LogLevel.ERROR);
@@ -224,7 +225,9 @@ export class Importer {
 							.catch((err) => {
 								reject(err);
 							});						
-				});				
+				  });
+        });
+								
 			}
 		});
 	}
