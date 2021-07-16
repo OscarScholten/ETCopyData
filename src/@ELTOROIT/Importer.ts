@@ -365,13 +365,25 @@ export class Importer {
 							} else {
 								Util.writeLog(`[${orgDestination.alias}] data not available for mapping field [${parent.parentId}] to SObject [${parent.sObj}]`, LogLevel.WARN);
 							}
-						});
+						}); 
 
 						// Create an object for each record that has one or more fields that need to be updated
 						this.twoPassReferenceFieldData.get(sObjectName).forEach((mappings: Array<ReferenceFieldMapping>, id: string) => {
 							let record = Object.assign({'Id': this.matchingIds.get(sObjectName).get(id)}, baseRecord);
 							mappings.forEach((mapping: ReferenceFieldMapping) => {
-								const destinationId = availableMatchingIds.get(mapping.fieldName).get(mapping.sourceId);
+								let destinationId = undefined;
+                if (availableMatchingIds.has(mapping.fieldName)) {
+                  destinationId = availableMatchingIds.get(mapping.fieldName).get(mapping.sourceId);
+                } else {
+                  //the id was not found, try to find in all lists. This can happen if the twopass reference field is a string and indirectly referencing a different type of an SObject
+                  for (const [sObjectKey, matchingIdsPerSObject] of this.matchingIds) { 
+                    if (matchingIdsPerSObject.has(mapping.sourceId)) {
+                      destinationId = matchingIdsPerSObject.get(mapping.sourceId);
+                      Util.writeLog(`[${orgDestination.alias}] Alternate mapping field [${mapping.fieldName}] for [${id}]:[ ${mapping.sourceId}] => [${destinationId}] (${sObjectKey})`, LogLevel.TRACE);
+                      break;
+                    }            
+                  }
+                }
 								if (destinationId !== undefined) {
 									record[mapping.fieldName] = destinationId;
 									Util.writeLog(`[${orgDestination.alias}] mapping field [${mapping.fieldName}] for [${id}]:[ ${mapping.sourceId}] => [${destinationId}]`, LogLevel.TRACE);
